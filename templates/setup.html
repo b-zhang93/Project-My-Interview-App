@@ -1,0 +1,24 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Set Up
+{% endblock %}
+
+{% block main %}
+    <form action="/setup" method="post">
+        <p> THIS IS WHAT YOU WANT TO APPEAR IN THE INTERVIEW APPLICATION</p>
+
+        <input name="firstname" placeholder="First" type="text">
+        <input name="lastname" placeholder="Last" type="text">
+
+        <input name="categories" type=drop?>  <input name="questions" type="text"> <input name="answers" type="text"> <!-- id? --!>
+
+        <!-- input question and answer in a loop where user can choose how many questions and answers... need to dynamically adjust --!>
+
+
+
+        <button class="btn btn-primary" type="submit">ADD</button>
+    </form>
+
+
+{% endblock %}

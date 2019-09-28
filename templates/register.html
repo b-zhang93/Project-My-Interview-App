@@ -1,0 +1,41 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Register
+{% endblock %}
+
+{% block main %}
+    <form action="/register" method="post" id="register">
+
+         <input autocomplete="off" id="username" name="username" placeholder="Username" type="text">
+         <input name="password" placeholder="Password" type="password">
+         <input name="confirmation" placeholder="Confirm" type="password">
+         <button type="submit">Register</button>
+
+
+    </form>
+
+    <script>
+        // checks database for same username and prompts an alert
+        var form = document.getElementById("register");
+        var my_func = function(event) {
+            event.preventDefault();
+        };
+
+        // stops form from submitting
+        form.addEventListener("submit", my_func, true);
+        // checks if username is already in database then submits or alerts
+        form.onsubmit = function() {
+            let username = $("#username").val();
+            $.get('/check?username='+username, function(data){
+                if (data == false) {
+                    alert('Username taken or blank!');
+                }
+                else {
+                    alert("Welcome!");
+                    form.submit();
+                }
+            });
+        };
+    </script>
+{% endblock %}
