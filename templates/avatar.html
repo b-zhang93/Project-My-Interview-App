@@ -1,0 +1,46 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Avatar Selector
+{% endblock %}
+
+{% block main %}
+
+    <form action="/avatar" method="post" id="avatar" class="av-contain">
+        <h2>Choose Your Avatar</h2>
+
+        <div>
+            <label>
+                <input type="radio" name="avatar" value="male1"  checked>
+                <img src="/static/male1.png" style="width: 140%" id="male1">
+            </label>
+
+            <label>
+                <input type="radio" name="avatar" value="male2">
+                <img src="/static/male2.png" style="width: 140%" id="male2">
+            </label>
+
+            <label>
+                <input type="radio" name="avatar" value="male3">
+                <img src="/static/male3.png" style="width: 140%" id="male3">
+            </label>
+
+            <label>
+                <input type="radio" name="avatar" value="female1">
+                <img src="/static/female1.png" style="width: 140%" id="female1">
+            </label>
+
+            <label>
+                <input type="radio" name="avatar" value="female2">
+                <img src="/static/female2.png" style="width: 140%" id="female2">
+            </label>
+
+             <label>
+                <input type="radio" name="avatar" value="female3">
+                <img src="/static/female3.png" style="width: 140%" id="female3">
+            </label>
+        </div>
+        <button class="btn btn-primary" type="submit">Next</button>
+    </form>
+
+{% endblock %}

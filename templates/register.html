@@ -6,13 +6,14 @@
 
 {% block main %}
     <form action="/register" method="post" id="register">
+        <h2>Register</h2>
+        <input autocomplete="off" id="email" name="email" placeholder="email@example.com" type="text" required>
+        <input autocomplete="off" id="username" name="username" placeholder="Username" type="text" required>
+        <input name="password" placeholder="Password" type="password" required>
+        <input name="confirmation" placeholder="Confirm password" type="password" required>
+        <button type="submit">Register</button>
 
-         <input autocomplete="off" id="username" name="username" placeholder="Username" type="text">
-         <input name="password" placeholder="Password" type="password">
-         <input name="confirmation" placeholder="Confirm" type="password">
-         <button type="submit">Register</button>
-
-
+        <p>Already have an account? <a href='/login'>Login here</a></p>
     </form>
 
     <script>
@@ -26,13 +27,14 @@
         form.addEventListener("submit", my_func, true);
         // checks if username is already in database then submits or alerts
         form.onsubmit = function() {
+            form.addEventListener("submit", my_func, true);
             let username = $("#username").val();
             $.get('/check?username='+username, function(data){
                 if (data == false) {
                     alert('Username taken or blank!');
                 }
                 else {
-                    alert("Welcome!");
+                    alert("Sending Confirmation Email...Please check your SPAM / Junk mail if not found");
                     form.submit();
                 }
             });

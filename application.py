@@ -7,9 +7,9 @@ from flask_session import Session
 from tempfile import mkdtemp
 from werkzeug.exceptions import default_exceptions, HTTPException, InternalServerError
 from werkzeug.security import check_password_hash, generate_password_hash
-import smtplib
 
-from functions import apology, login_required
+# import helper functions
+from functions import apology, login_required, confirm_email
 
 # Configure application
 app = Flask(__name__)
@@ -33,12 +33,21 @@ app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
 
-# DATABASE FUNCTIONALITIES HERE
 # Configure CS50 Library to use SQLite database
 db = SQL("sqlite:///database.db")
 
 
-@app.route("/login", methods=["Get", "POST"])
+# defining dynamic classes for html via ajax
+class1 = "auth"
+class2 = "app"
+
+
+@app.route("/")
+def home():
+    return redirect("/setup")
+
+
+@app.route("/login", methods=["GET", "POST"])
 def login():
 
     # Forget any user
@@ -61,10 +70,10 @@ def login():
 
         # Ensure username exists and password is correct
         if len(rows) != 1 or not check_password_hash(rows[0]["hash"], request.form.get("password")):
-            return apology("invalid username and/or password")
+            return apology("invalid username or password")
 
         # Remember which user has logged in
-        session["user_id"] = rows[0]["id"]
+        session["user_id"] = rows[0]["user_id"]
 
         # Redirect user to home page
         return redirect("/setup")
@@ -74,8 +83,27 @@ def login():
         return render_template("login.html")
 
 
+# have user select their avatar
+@app.route("/avatar", methods=["GET", "POST"])
+@login_required
+def avatar():
+
+    # log the user id
+    userid = session["user_id"]
+
+    # updates user avatar selection in database
+    if request.method == "POST":
+
+        avatar = request.form.get("avatar")
+        db.execute("UPDATE users SET avatar=:avatar WHERE user_id=:userid", userid=userid, avatar=avatar)
+        return redirect("/setup")
+
+    else:
+        return render_template("avatar.html", class1=class1)
+
+
 # main page with question and answers for users to set up for application
-@app.route("/setup", method=["POST", "GET"])
+@app.route("/setup", methods=["GET", "POST", "DELETE"])
 @login_required
 def setup():
 
@@ -83,51 +111,128 @@ def setup():
     userid = session["user_id"]
 
     # pulls user interview information if exists
-    interview = db.execute("SELECT * FROM interview WHERE id = :userid", userid=userid)
+    interview = db.execute("SELECT * FROM interview WHERE user_id = :userid", userid=userid)
 
-    if request.method == "POST":
+    if request.method == "DELETE":
 
-        first = request.form.get("firstname")
-        last = request.form.get("lastname")
-        questions = request.form.get("questions")
-        answers = request.form.get("answers")
-        categories = request.form.get("categories")
+        # deletes question from database if user selects the delete option
+        questionid = request.json
+        db.execute("DELETE FROM interview WHERE question_id=:questionid", questionid=questionid)
+        return jsonify(True)
+
+    elif request.method == "POST":
+
+        # receive array for question and answers from front end
+        data = request.json
+
+        first = data[0]["firstname"]
+        last = data[0]["lastname"]
+        job = data[0]["job"]
+        country = data[0]["country"]
 
         # on submit validate no blanks
         if not first or not last:
             return apology("please fill out first and last name")
-        elif not questions or not answers or not categories:
-            return apology("please fill in Q/A and category")
 
         # if user already have previously filled out form just update information
         elif len(interview) > 0:
 
             # update name and interview information
-            db.execute("UPDATE users SET first=:first, last=:last WHERE id = :userid", userid=userid, first=first, last=last)
-            db.execute("UPDATE interview SET question=:questions, answer=:answers, category=:categories WHERE id = :userid",
-                       userid=userid, questions=questions, answers=answers, categories=categories)
+            db.execute("UPDATE users SET first=:first, last=:last, country=:country, job=:job WHERE user_id = :userid",
+                       userid=userid, first=first, last=last, country=country,job=job)
 
-            return redirect("/application")
+            # for each item in the submitted form, update or insert into database for user
+            for i in range(len(data) - 1):
+                i += 1
+                category = data[i]["category"]
+                question = data[i]["question"]
+                answer = data[i]["answer"]
+                q_id = int(data[i]["id"])
 
-        # if new user do a competely new set up and insert information into database
+                # update old questions
+                if q_id > 0:
+                    db.execute("UPDATE interview SET category=:category, question=:question, answer=:answer WHERE question_id=:q_id",
+                               q_id=q_id, category=category, question=question, answer=answer)
+                # insert new ones
+                else:
+                    db.execute("INSERT INTO interview(user_id, category, question, answer) values( :userid, :category, :question, :answer)",
+                           userid=userid, question=question, answer=answer, category=category)
+            return jsonify("/application")
+
+        # for new registrated users without any forms filled before
         else:
 
             # update name from registration and insert user interview set up input into interview table
-            db.execute("UPDATE users SET first=:first, last=:last WHERE id = :userid", userid=userid, first=first, last=last)
-            db.execute("INSERT INTO interview(id, question, answer, category) values( :userid, :questions, :answers, :categories)",
-                       userid=userid, questions=questions, answers=answers, categories=categories)
+            db.execute("UPDATE users SET first=:first, last=:last, country=:country, job=:job WHERE user_id = :userid",
+                       userid=userid, first=first, last=last, country=country,job=job)
 
-            return redirect("/application")
+            for i in range(len(data) - 1):
+                i += 1
+                category = data[i]["category"]
+                question = data[i]["question"]
+                answer = data[i]["answer"]
 
+
+                db.execute("INSERT INTO interview(user_id, question, answer, category) values( :userid, :question, :answer, :category)",
+                           userid=userid, question=question, answer=answer, category=category)
+
+            return jsonify("/application")
+
+    # on get, populate all user previous filled out information
     else:
 
         if len(interview) > 0:
 
-            # populate form text with previous information from INTERVIEW variable
-            return render_template("setup.html", interview=interview)
+            # pull up the users existing information to populate the form
+            content = db.execute("SELECT * FROM users JOIN interview ON users.user_id=interview.user_id WHERE users.user_id=:userid AND interview.user_id=:userid", userid=userid)
+
+            # state variables to populate in form for existing users with their existing information
+            first = content[0]["first"]
+            last = content[0]["last"]
+            job = content[0]["job"]
+            country = content[0]["country"]
+
+            # populate the template with existing variables
+            return render_template("setup.html", content=content, class1=class1, first=first, last=last, job=job, country=country)
 
         else:
-            return render_template("setup.html", interview=interview)
+            return render_template("setup.html", class1=class1)
+
+
+# Outputted (actual) application - share with interviewers to get your virtual interview
+@app.route("/application", methods=["GET", "POST"])
+def application():
+
+    # checks if user is logged in or not. Returns user id based on either shareable link or logged in session id
+    if session.get("user_id") is None:
+        userid = request.args.get("userid")
+    else:
+        userid = session["user_id"]
+
+    content = db.execute("SELECT * FROM users JOIN interview ON users.user_id=interview.user_id WHERE users.user_id=:userid AND interview.user_id=:userid", userid=userid)
+    avatar = content[0]["avatar"]
+    first = content[0]["first"]
+    last = content[0]["last"]
+
+    if not avatar or not first or not last:
+        return apology("please complete set up before coming here")
+    else:
+        return render_template("application.html", class1=class2, avatar=avatar, content=content, first=first, last=last)
+
+
+# returns json data over to front end for application
+@app.route("/content", methods=["GET"])
+def content():
+
+    # checks if user is logged in or not. Returns user id based on either shareable link or logged in session id
+    if session.get("user_id") is None:
+        userid = request.args.get("userid")
+    else:
+        userid = session["user_id"]
+
+    content = db.execute("SELECT * FROM users JOIN interview ON users.user_id=interview.user_id WHERE users.user_id=:userid AND interview.user_id=:userid", userid=userid)
+
+    return jsonify(content)
 
 
 @app.route("/logout")
@@ -147,17 +252,14 @@ def register():
 
     if request.method == "POST":
 
-        firstn = request.form.get("firstname")
-        lastn = request.form.get("lastname")
         new_user = request.form.get("username")
         pword = request.form.get("password")
         confirm = request.form.get("confirmation")
         email = request.form.get("email")
-        country = request.form.get("country")
-        job = request.form.get("job")
 
         # query the database with all user information
         users = db.execute("SELECT * FROM users WHERE username = :username", username=new_user)
+        address = db.execute("SELECT * FROM users WHERE email = :email", email=email)
 
         # ensures validation for mandatory input fields
         if not new_user:
@@ -166,39 +268,35 @@ def register():
             return apology("missing password")
         elif not confirm:
             return apology("must confirm password")
-        elif not firstn or not lastn:
-            return apology("Must Have First and Last Name")
         elif not email:
             return apology("Please input email")
-
         # check if username already exists
         elif len(users) >= 1:
             return apology("Username Taken")
+        # checks for taken email
+        elif len(address) >=1:
+            return apology("Email already registered")
         # ensure password confirmation is valid
         elif pword != confirm:
             return apology("Passwords do not match")
-
-        # add new user into database
         else:
+            # add new user into database
             hash_p = generate_password_hash(pword)
             db.execute(
-                "INSERT INTO users(username,hash,email,job,country,first,name) values(:username, :hash, :email, :job, :country, :firstn, :lastn)",
-                  username=new_user, hash=hash_p, email=email, job=job, country=country, firstn=firstn, lastn=lastn)
+                "INSERT INTO users(username, hash, email) values(:username, :hash, :email)",
+                  username=new_user, hash=hash_p, email=email)
 
-            # sends confirmation email to user
-            message = "You are registered!"
-            server = smtplib.SMTP("smtp.gmail.com", 587)
-            server.starttls()
-            server.login("jharvard@cs50.net", os.getenv("PASSWORD"))
-            server.sendmail("jharvard@cs50.net", email, message)
-
-            # redundant?
-            users = db.execute("SELECT * FROM users WHERE username = :username", username=new_user)
+            # reload users after insert
+            users = db.execute("SELECT user_id FROM users WHERE username = :username", username=new_user)
 
             # saves the session for this user
-            session["user_id"] = users[0]["id"]
+            session["user_id"] = users[0]["user_id"]
+            userid = session["user_id"]
 
-            return redirect("/setup")
+            # sends confirmation email to user and redirects to avatar selection #
+            # uses SendGrid free account and API to send email #
+            return confirm_email(new_user, userid, email)
+
     else:
         return render_template("register.html")
 
@@ -208,66 +306,36 @@ def check():
     """Return true if username available, else false, in JSON format"""
 
     user = request.args.get("username")
+
     # query the database with IDs and usernames
     users = db.execute("SELECT * FROM users WHERE username = :username", username=user)
 
     # ensures validation for username
     if not user:
         return jsonify(False)
-
-    # checks if username already exists or not
+    # checks if username or email already exists
     if len(users) >= 1:
         return jsonify(False)
-
     else:
         return jsonify(True)
 
 
-# EMBEDDED LINK OR OUTPUT VERSION (ACTUAL APPLICATION)
-@app.route("/application", methods=["GET"])
+@app.route("/share", methods=["GET"])
 @login_required
-def application():
-
+def share():
     userid = session["user_id"]
+    return render_template("share.html", userid=userid, class1=class2)
 
-    ### auto-log-in based on unique link###
-    # ##functionalities based on interactions with app? (figure this part out) ##
+@app.route("/faq", methods=["GET"])
+def faq():
+    return render_template("faq.html", class1=class2)
 
-    # select necessary dictionary with join function
-    content = db.execute(
-        "SELECT first, last, question, answer, category FROM users JOIN interview ON users.id=interview.id WHERE userid=:userid", userid=userid)
-
-    ### how do i send content over to HTML side? ###
-
-    return render_template("application.html", dictionary=content)
-
-
-
-### how to password reset #### ??
-# @app.route("/reset", methods=["POST", "GET"])
-
-#     if request.method == "POST":
-#         # reset password form
-
-
-
-
-#     else:
-
-
-#         return render_template("reset.html")
-### complicated or simple way? ###
-
-
-
-
-# ERROR HANDLER ETC>>
 
 def errorhandler(e):
     """Handle error"""
     if not isinstance(e, HTTPException):
         e = InternalServerError()
-    return apology(e.name, e.code)
+    return apology(e.name)
 
 
 # Listen for errors

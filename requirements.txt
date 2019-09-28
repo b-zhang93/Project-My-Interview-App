@@ -2,3 +2,4 @@ cs50
 Flask
 Flask-Session
 requests
+SendGrid (www.sendgrid.com - to utilize confirmation email functionality without smtplib and inputting email password)

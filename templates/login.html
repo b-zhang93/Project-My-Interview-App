@@ -6,9 +6,12 @@
 
 {% block main %}
     <form action="/login" method="post">
-        <input autocomplete="off" name = "username" placeholder="username" type="text">
-        <input name = "password" type="password">
+        <h2>Log In</h2>
+        <input autocomplete="off" name="username" placeholder="Username" type="text" required>
+        <input name="password" type="password" placeholder="Password" required>
 
         <button class="btn btn-primary" type="submit">Log In</button>
+
+        <p>Don't have an account? <a href='/register'>Register here</a></p>
     </form>
 {% endblock %}
