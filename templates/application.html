@@ -6,8 +6,112 @@
 
 {% block main %}
 
+    <div class="appframe">
+        <button class="button4" style="background-color: #146eb4" onclick="contact()">Contact Me</button>
 
-    <!-- output the actual application here -->
+        <img class="avconfig" src="/static/{{avatar}}.png" alt="interview avatar" id="avatar">
+
+        <div class="foot">
+            <button class="button1" style="background-color:#146eb4; right: 11%" onclick="togglebox('Behavioral')"><strong>Behavioral</strong></button>
+            <button class="button1" style="background-color:#146eb4; left: 12%;" onclick="togglebox('Skills/Technical')"><strong>Technical</strong></button>
+        </div>
+
+        <div class="userbox" id="userbox">
+            <button class="button3" onclick="hidebox()">Go Back</button>
+        </div>
+
+        <!--speech bubble for answer output-->
+        <p class="bubble speech">
+            <strong>Hello, my name is {{first}} {{last}}.
+
+            {%if content[0].country %}
+                I currently live in {{ content[0].country }}.
+            {% endif %}
+
+            {% if content[0].job %}
+                Professionally, I work as a {{ content[0].job }}.
+            {% endif %}
 
 
+            <br>It's a pleasure to meet you! What shall we begin with?</strong>
+            <br><br> (Technical if you want to learn more about my skills. Behavioral if you wish to learn more about me)
+        </p>
+    </div>
+
+{% endblock %}
+
+
+{% block footer %}{% endblock %}
+
+
+{% block scripts %}
+    <script>
+        var questions = [];
+        var urlParams = new URLSearchParams(window.location.search);
+        var userid = urlParams.get('userid');
+        $.get(`/content?userid=${userid}`, function(data) {
+             questions = data;
+        });
+
+        // toggle user interactable box
+        function togglebox(button) {
+            $('#userbox').show();
+            var filteredQuestions = questions.filter(function(question) {
+                return question.category === button;
+            });
+            if (!filteredQuestions.length) {
+                $('#userbox').append('<p>There are no questions.</p>');
+            } else {
+                filteredQuestions.forEach(function(question) {
+                   var questionButton = $(`<button class="button2 question-button question-button-${question.question_id}" onclick="showQuestion(${question.question_id})">${question.question}</button><br>`);
+                   $('#userbox').append(questionButton);
+                });
+            }
+        }
+
+        function hidebox() {
+            $('#userbox').hide();
+            // Removes message for empty state.
+            $('#userbox p').remove();
+            // Removes <br> after each .question-button
+            $('.question-button').next().remove();
+            // Removes .question-button
+            $('.question-button').remove();
+            // Adds back the original speech bubble message.
+            $('.bubble.speech').html(`
+                <strong>Hello, my name is {{first}} {{last}}.
+
+                {% if content[0].job %}
+                    My position is currently {{ content[0].job }}.
+                {% endif %}
+
+                {%if content[0].country %}
+                    I currently live in {{ content[0].country }}.
+                {% endif %}
+
+                <br>It's a pleasure to meet you! What shall we begin with?</strong>
+                <br><br> (Technical if you want to learn more about my skills. Behavioral if you wish to learn more about me)
+            `);
+        }
+
+        function showQuestion(id) {
+            var questionButton = $(`.question-button-${id}`);
+            questionButton.css('color', '#d2d2d2');
+
+            var selectedQuestion = questions.find(function(question) {
+                return question.question_id === id;
+            });
+            $('.bubble.speech').text(selectedQuestion.answer);
+            $('#avatar').attr('src', '/static/{{avatar}}smile.png');
+        }
+        $(".button3").click(function () {
+            $('#avatar').attr('src', '/static/{{avatar}}.png');
+        });
+
+        function contact() {
+            $('.bubble.speech').text("Thanks for the interview! I hope have learned more about me. If you have any other questions, please contact me at: {{ content[0].email }}");
+            $('#avatar').attr('src', '/static/{{avatar}}smile.png');
+        }
+
+    </script>
 {% endblock %}

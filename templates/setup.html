@@ -5,20 +5,269 @@
 {% endblock %}
 
 {% block main %}
-    <form action="/setup" method="post">
-        <p> THIS IS WHAT YOU WANT TO APPEAR IN THE INTERVIEW APPLICATION</p>
+    <form id="setup">
+        <h2>Tell us about you</h2>
 
-        <input name="firstname" placeholder="First" type="text">
-        <input name="lastname" placeholder="Last" type="text">
+        {% if content|length > 0 %}
+            <div class='user-details'>
+                <div>
+                    <label for='firstname'>First Name</label>
+                    <input name="firstname" placeholder="First Name" type="text" id="firstname" value="{{ first }}" required>
+                </div>
+                <div>
+                    <label for='lastname'>Last Name</label>
+                    <input name="lastname" placeholder="Last Name" type="text" id="lastname" value="{{ last }}" required>
+                </div>
+            </div>
+            <div class='user-details'>
+                <div>
+                    <label for='country'>Country (optional)</label>
+                    <input name="country" placeholder="Country (optional)" id="country" type="text" value="{{ country }}">
+                </div>
+                <div>
+                    <label for='job'>Current Job / Position (optional)</label>
+                    <input name="job" placeholder="Job Title (optional)" id="job" type="text" value="{{ job }}">
+                </div>
+            </div>
+        {% else %}
+            <div class='user-details'>
+                <div>
+                    <label for='firstname'>First Name</label>
+                    <input name="firstname" placeholder="First Name" type="text" id="firstname" required>
+                </div>
+                <div>
+                    <label for='lastname'>Last Name</label>
+                    <input name="lastname" placeholder="Last Name" type="text" id="lastname" required>
+                </div>
+            </div>
+            <div class='user-details'>
+                <div>
+                    <label for='country'>Country (optional)</label>
+                    <input name="country" placeholder="Country (optional)" type="text" id="country">
+                </div>
+                <div>
+                    <label for='job'>Current Job / Position (optional)</label>
+                    <input name="job" placeholder="Job Title (optional)" type="text" id="job">
+                </div>
+            </div>
+        {% endif %}
+        <br>
+        <h2>Create a question + answer</h2>
 
-        <input name="categories" type=drop?>  <input name="questions" type="text"> <input name="answers" type="text"> <!-- id? --!>
+        {% if content|length > 0 %}
+            {% for content in content%}
+            <div class='previous-questions' id="previous-question{{loop.index - 1}}" data-id="{{content.question_id}}">
+                <div>
+                    <label for="category{{loop.index - 1}}">Question Type</label>
+                    <select name="categories" class='category' id="category{{loop.index - 1}}" required>
+                        <option value="{{ content.category }}">{{ content.category }}</option>
+                        <option value="Behavioral">Behavioral</option>
+                        <option value="Skills/Technical">Skills/Technical</option>
+                    </select>
+                </div>
 
-        <!-- input question and answer in a loop where user can choose how many questions and answers... need to dynamically adjust --!>
+                <div>
+                    <label for="question{{loop.index - 1}}">Question</label>
+                    <textarea class="form-control questions" name="questions" type="text" id="question{{loop.index - 1}}" value="{{ content.question }}" rows="1" required>{{ content.question }}</textarea>
+                </div>
 
+                <div>
+                    <label for="answer{{loop.index - 1}}">Answer</label>
+                    <textarea class="form-control answers" name="answers" type="text" id="answer{{loop.index - 1}}" value="{{ content.answer }}" rows="3" required>{{ content.answer }}</textarea>
+                </div>
+                <button class="delete">Delete</button>
+            </div>
+            <br>
+            {% endfor %}
+        {% endif %}
 
-
-        <button class="btn btn-primary" type="submit">ADD</button>
+        <div class='new-questions'></div><br>
+        <button id="add-question-btn" class="btn btn-secondary">New Question</button>
+        <br><br>
+        <button class="btn btn-primary" type="submit">Submit</button>
     </form>
+{% endblock %}
 
+{% block scripts %}
+    <script>
+        var questions = [
+            {
+                category: '',
+                question: '',
+                answer: '',
+                id: 0
+            }
+        ];
 
+        var createNewQuestionBlock = function(index) {
+            var questionBlock = $(`<div id="question-block${index}" class="question-block">
+                <div>
+                    <label for="new-category${index}">Question Type</label>
+                    <select name="categories" id="new-category${index}" class="category">
+                        <option value="">Select a category</option>
+                        <option value="Skills/Technical">Skills/Technical</option>
+                        <option value="Behavioral">Behavioral</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="new-questions${index}">Question</label>
+                    <textarea class="form-control questions" name="questions" type="text" id="new-questions${index}"></textarea>
+                </div>
+                <div>
+                    <label for="new-answers${index}">Answer</label>
+                    <textarea class="form-control answers" name="answers" type="text" id="new-answers${index}"></textarea>
+                </div>
+                <button class="remove" onclick="removeQuestion(${index})">Remove</button>
+            </div>`);
+            $('.new-questions').append(questionBlock);
+
+            // Watch for input changes, changes value in questions array
+            $('.new-questions .answers').change(function() {
+                var value = $(this).val();
+                var index = $(this).attr("id").replace("new-answers", "");
+                questions[index].answer = value;
+            });
+            $('.new-questions .questions').change(function() {
+                var value = $(this).val();
+                var index = $(this).attr("id").replace("new-questions", "");
+                questions[index].question = value;
+            });
+            $('.new-questions .category').change(function() {
+                var value = $(this).val();
+                var index = $(this).attr("id").replace("new-category", "");
+                questions[index].category = value;
+            });
+        }
+
+        createNewQuestionBlock(questions.length - 1);
+
+        // add another question
+        $("#add-question-btn").click(function(e) {
+            e.preventDefault();
+            var newQuestion = {
+                category: '',
+                question: '',
+                answer: '',
+                id: 0
+            };
+            questions.push(newQuestion);
+            createNewQuestionBlock(questions.length - 1);
+        });
+
+        function removeQuestion(index) {
+            var parent = $(`#question-block${index}`);
+            questions.splice(index, 1);
+            parent.remove();
+        }
+
+        // Make a list with the previous questions
+        var oldQuestions = [];
+        $.each($('.previous-questions'), function(key) {
+            var questionId = $(this).attr('data-id');
+
+            var questionBlock = `#previous-question${key}`;
+            var questionObj = {
+              category: $(`${questionBlock} #category${key}`).val(),
+              question: $(`${questionBlock} #question${key}`).val(),
+              answer: $(`${questionBlock} #answer${key}`).val(),
+              id: questionId,
+            };
+            oldQuestions.push(questionObj);
+        });
+        // Watch for input changes, changes value in questions array
+        $('.previous-questions .answers').change(function() {
+            var value = $(this).val();
+            var index = $(this).attr("id").replace("answer", "");
+            oldQuestions[index].answer = value;
+        });
+        $('.previous-questions .questions').change(function() {
+            var value = $(this).val();
+            var index = $(this).attr("id").replace("question", "");
+            oldQuestions[index].question = value;
+        });
+        $('.previous-questions .category').change(function() {
+            var value = $(this).val();
+            var index = $(this).attr("id").replace("category", "");
+            oldQuestions[index].category = value;
+        });
+
+        // delete question by sending question id clicked block
+        $(".delete").click(function() {
+            var r = confirm("Are you sure you want to DELETE this question?");
+            if (r == true) {
+                var parent = $(this).parent();
+                var questionId = parent.attr('data-id');
+                $.ajax({
+                    url: '/setup',
+                    method: 'delete',
+                    contentType: 'application/json',
+                    dataType : 'json',
+                    data : JSON.stringify(questionId)
+                })
+                .done(function(response) {
+                    // Remove deleted question from the list
+                    var oldQuestion = oldQuestions.find(function(question) {
+                        return question.id === questionId;
+                    });
+                    oldQuestions = oldQuestions.filter(function(question) {
+                        return question !== oldQuestion;
+                    });
+                    parent.remove();
+                });
+            }
+        });
+
+        // validation alerts for blank mandatory boxes
+        $('button[type=submit]').click(function(e) {
+            e.preventDefault();
+
+            var questionEmpty = false;
+            var answerEmpty = false;
+            var questionsElements = $(".questions");
+            $.each(questionsElements, function(index, question) {
+                const questionValue = $(question).val();
+                if (!$.trim(questionValue)) {
+                    questionEmpty = true;
+                }
+            });
+
+            var answers = $(".answers");
+            $.each(answers, function(index, answer) {
+                const answerValue = $(answer).val();
+                if (!$.trim(answerValue)) {
+                    answerEmpty = true;
+                }
+            });
+
+            if (!$("#firstname").val() || !$("#lastname").val()) {
+                alert("You must provide your name!");
+            }
+            else if (questionEmpty || answerEmpty){
+                alert("You must fill out all question and answers!")
+            } else {
+                var clonedQuestions = oldQuestions.map(question => question);
+                var userDetails = {
+                    firstname: $('#firstname').val(),
+                    lastname: $('#lastname').val(),
+                    country: $('#country').val(),
+                    job: $('#job').val(),
+                };
+                clonedQuestions.unshift(userDetails);
+                var joinedArray = clonedQuestions.concat(questions);
+                var data = JSON.stringify(joinedArray);
+                $.ajax({
+                    url: '/setup',
+                    type : 'post',
+                    contentType: 'application/json',
+                    dataType : 'json',
+                    data : data
+                })
+                .done(function(response) {
+                    window.location.href = response;
+
+                });
+            }
+        });
+
+    </script>
 {% endblock %}

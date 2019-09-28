@@ -1,0 +1,30 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Share Your Application
+{% endblock %}
+
+{% block main %}
+
+    <div id='share-app' data-user="{{userid}}">
+        <h4>You can attach this link on your website/resume or share directly with interviewers</h4><br>
+        <div>
+            URL: <input id='share-link' readonly disabled></input>
+            <button id='copy-share-link' class='btn btn-primary btn-sm' onclick='copyShareLink()'>Copy</button>
+        </div>
+    </div>
+
+    <script>
+        var userid = $('#share-app').attr('data-user');
+        var shareLink = window.location.origin + '/application?userid=' + userid;
+        $('#share-link').val(shareLink);
+
+        function copyShareLink() {
+            $('#share-link').removeAttr('disabled');
+            $('#share-link').select();
+            document.execCommand('copy');
+            $('#share-link').attr('disabled', 'true');
+        }
+    </script>
+
+{% endblock %}
