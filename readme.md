@@ -23,10 +23,10 @@ What was Done:
 
 - Allows the user to demo a preview of the application based on their set up and avatar choice. They can play as the interviewer and see exactly what others will see in the final product.
 
-- Generates an unique shareable link that allows user to share the final application on the internet with anyone. Whoever accesses the shareable link can view the application and conduct a virtual interview
+- Generates a unique shareable link that allows user to share the final application on the internet with anyone. Whoever accesses the shareable link can view the application and conduct a virtual interview
   of the user. The shareable link is unique for the individual and pulls information from the database based on the URL link. The application will change avatar and question / answer / name based on the
   individual’s unique link. Persons with the link do not need to log in to view the application and can interact and conduct a virtual interview
 
 - Added validation and error pages / alerts for the website at both front end and back end (in case front end fails)
 
-- FAQ & password reset for users
+- FAQ 
